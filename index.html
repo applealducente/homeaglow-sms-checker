@@ -255,7 +255,7 @@ h1 { font-size: 2.15rem; letter-spacing: -0.025em; }
 
 /* Tabs: a crisp segmented control */
 .tabs { background: var(--surface); box-shadow: var(--shadow); padding: 5px; gap: 4px; }
-.tabs button { font-family: var(--font-mono); font-size: 0.76rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.1em; padding: 9px 20px; transition: background 0.15s, color 0.15s; }
+.tabs button { font-family: var(--font-mono); font-size: 0.76rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.1em; padding: 9px 20px; }
 .tabs button:hover { border-color: transparent; background: var(--bg); }
 .tabs button[aria-selected="true"] { background: var(--fg); color: var(--surface); }
 
@@ -287,7 +287,7 @@ h1 { font-size: 2.15rem; letter-spacing: -0.025em; }
 
 /* Message list: quiet rows instead of boxed cards */
 .pane .tpl-pane { gap: 2px; padding: 8px; }
-.tpl { border: 1px solid transparent; background: transparent; border-radius: 10px; padding: 10px 12px; transition: background 0.15s; position: relative; }
+.tpl { border: 1px solid transparent; background: transparent; border-radius: 10px; padding: 10px 12px; position: relative; }
 .tpl:hover { border-color: transparent; background: var(--bg); }
 .tpl[aria-pressed="true"] { border: 1px solid var(--accent); background: var(--accent-soft); padding: 10px 12px; }
 .tpl[aria-pressed="true"]::after { content: "\25CF"; position: absolute; right: 12px; top: 10px; font-size: 0.55rem; color: var(--fg); }
