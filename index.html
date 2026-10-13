@@ -183,6 +183,8 @@ details > summary { cursor: pointer; font-weight: 600; color: var(--muted); }
 .gen-fields { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 10px; }
 .gen-fields .field.wide { grid-column: 1 / -1; }
 .gen-fields textarea { min-height: 96px; font-family: var(--font-body); font-size: 0.92rem; }
+.req { font-weight: 500; color: var(--bad); font-size: 0.78rem; }
+.gen-fields input[aria-invalid="true"] { border-color: var(--bad); background: var(--bad-soft); }
 .gen-meta { margin: 0; color: var(--muted); font-size: 0.82rem; font-family: var(--font-mono); font-variant-numeric: tabular-nums; }
 footer { color: var(--muted); font-size: 0.8rem; max-width: 80ch; }
 footer p { margin: 0 0 6px; }
@@ -616,7 +618,7 @@ footer p { margin: 0 0 6px; }
   };
 
   function hi(v) { return "Hi " + (v.customer.trim() || "there") + "!"; }
-  function me(v) { return v.agent.trim() ? "This is " + v.agent.trim() + " from Homeaglow." : "This is Homeaglow."; }
+  function me(v) { return "This is " + (v.agent.trim() || "[your name]") + " from Homeaglow."; }
   function money(n) { return Number.isInteger(n) ? String(n) : n.toFixed(2); }
 
   var TEMPLATES = [
@@ -627,11 +629,11 @@ footer p { margin: 0 0 6px; }
     { id: "unfinished-quote", name: "Quote not finished", use: "They started a quote but didn't book.", fields: ["customer", "agent"],
       text: function (v) { return hi(v) + " " + me(v) + " I noticed you started a quote request but didn't finish booking. I'd be happy to put together a custom cleaning package based on your home and cleaning needs.\n\nTo get started, how many bedrooms and bathrooms do you have?"; } },
     { id: "voucher", name: "Free hours not claimed", use: "Reminder about their free cleaning voucher.", fields: ["customer", "freeHours"],
-      text: function (v) { return hi(v) + " I noticed you haven't claimed your " + v.freeHours + " FREE hours of cleaning yet. Would you still like me to help you set that up?\n\nIs now a good time for a quick call, or do you prefer text?"; } },
+      text: function (v) { return hi(v) + " " + me(v) + " I noticed you haven't claimed your " + v.freeHours + " FREE hours of cleaning yet. Would you still like me to help you set that up?\n\nIs now a good time for a quick call, or do you prefer text?"; } },
     { id: "price-list", name: "Offer price list", use: "Show the current voucher prices.", fields: ["customer", "agent", "offers"],
       text: function (v) { return hi(v) + " " + me(v) + " Thanks for your interest!\n\nWe have options for recurring or one-time cleaning, whichever works for you. Vetted cleaners bring their own supplies at no extra cost, Monday to Sunday.\n\nLIMITED TIME VOUCHERS\n" + v.offers.trim() + "\n\nReply BOOKNOW and I'll help you secure your voucher and schedule your first cleaning."; } },
     { id: "held-back", name: "What held you back?", use: "Ask if it was the fee or the commitment.", fields: ["customer"],
-      text: function (v) { return hi(v) + " Still in need of home cleaning? When you looked at our offer before, what held you back from trying it?\n\nWas it the FEE, the COMMITMENT, or BOTH? Reply and I'll share an option that fits."; } },
+      text: function (v) { return hi(v) + " " + me(v) + " Still in need of home cleaning? When you looked at our offer before, what held you back from trying it?\n\nWas it the FEE, the COMMITMENT, or BOTH? Reply and I'll share an option that fits."; } },
     { id: "booking-link", name: "Booking link steps", use: "Send the link and how to book.", fields: ["link", "hours"],
       text: function (v) { return "To secure your spot before available times fill up, please follow these quick steps:\n\n1. Click this link: " + v.link.trim() + "\n2. Select the " + v.hours + " HOURS option\n3. Enter your details and complete your secure booking\n\nWe're excited to help you keep your home fresh and clean!"; } },
     { id: "call-summary", name: "Call summary: one-time clean", use: "Recap the price after a call.", fields: ["customer", "rate", "hours"],
@@ -641,7 +643,7 @@ footer p { margin: 0 0 6px; }
     { id: "call-back", name: "Call back later", use: "They asked you to call later.", fields: ["callTime"],
       text: function (v) { return "Got it! I can call you back " + (v.callTime.trim() ? "after " + v.callTime.trim() : "later") + ". In the meantime, would you like to continue by text?"; } },
     { id: "confirmed", name: "Appointment confirmed", use: "Their booking went through.", fields: ["customer"],
-      text: function (v) { return hi(v) + " The email confirmation for your appointment has been sent. If you have any questions, just let me know.\n\nThe email also has a link to your own dashboard, where you can see your cleaner's details, message them and book future appointments. Have a good one!"; } },
+      text: function (v) { return hi(v) + " " + me(v) + " The email confirmation for your appointment has been sent. If you have any questions, just let me know.\n\nThe email also has a link to your own dashboard, where you can see your cleaner's details, message them and book future appointments. Have a good one!"; } },
     { id: "final", name: "Final follow-up", use: "Last message before closing the lead.", fields: ["customer", "agent", "freeHours"],
       text: function (v) { return hi(v) + " " + me(v) + "\n\nThis will be my final follow-up about your cleaning inquiry. Since I haven't heard back, your promotional offer is scheduled to be removed and your file may be closed shortly.\n\nIf you'd still like to claim your FREE " + v.freeHours + "-hour initial cleaning and discounted pricing, please reply as soon as possible."; } },
     { id: "weekend", name: "Weekend promo", use: "A friendly nudge before the weekend.", fields: ["agent"],
@@ -662,12 +664,14 @@ footer p { margin: 0 0 6px; }
   }
 
   function renderGenFields() {
-    $("gen-fields").innerHTML = currentTpl().fields.map(function (k) {
-      var f = FIELDS[k], id = "gf-" + k, val = escapeHtml(genState.values[k] || "");
+    // "Your name" is required, so it comes first on every message.
+    var keys = ["agent"].concat(currentTpl().fields.filter(function (k) { return k !== "agent"; }));
+    $("gen-fields").innerHTML = keys.map(function (k) {
+      var f = FIELDS[k], id = "gf-" + k, val = escapeHtml(genState.values[k] || ""), req = k === "agent";
       var input = f.type === "textarea"
         ? '<textarea id="' + id + '" data-field="' + k + '">' + val + "</textarea>"
-        : '<input type="text" id="' + id + '" data-field="' + k + '" value="' + val + '"' + (f.ph ? ' placeholder="' + escapeHtml(f.ph) + '"' : "") + ">";
-      return '<div class="field' + (f.type === "textarea" || f.wide ? " wide" : "") + '"><label for="' + id + '">' + escapeHtml(f.label) + "</label>" + input + "</div>";
+        : '<input type="text" id="' + id + '" data-field="' + k + '" value="' + val + '"' + (f.ph ? ' placeholder="' + escapeHtml(f.ph) + '"' : "") + (req ? ' required aria-required="true"' : "") + ">";
+      return '<div class="field' + (f.type === "textarea" || f.wide ? " wide" : "") + '"><label for="' + id + '">' + escapeHtml(f.label) + (req ? ' <span class="req">(required)</span>' : "") + "</label>" + input + "</div>";
     }).join("");
   }
 
@@ -681,8 +685,16 @@ footer p { margin: 0 0 6px; }
     var out = $("gen-out");
     if (regen) { out.value = generate(); genState.edited = false; }
     var text = out.value, a = analyze(text), v = $("gen-verdict");
-    v.className = "verdict " + (a.gsm ? "ok" : "no");
-    v.innerHTML = '<span class="pill">' + a.encoding + "</span><span>" + escapeHtml(label(a)) + "</span>";
+    var needName = !genState.values.agent.trim();
+    if (needName) {
+      v.className = "verdict no";
+      v.innerHTML = '<span class="pill">NAME</span><span>Enter your name in step 2 to finish this message</span>';
+    } else {
+      v.className = "verdict " + (a.gsm ? "ok" : "no");
+      v.innerHTML = '<span class="pill">' + a.encoding + "</span><span>" + escapeHtml(label(a)) + "</span>";
+    }
+    $("gen-copy").disabled = needName;
+    var nameBox = $("gf-agent"); if (nameBox) nameBox.setAttribute("aria-invalid", needName);
     $("gen-meta").textContent = a.units + " characters · " + a.segments + (a.segments === 1 ? " segment" : " segments") + " · $" + (a.segments * COST_PER_SEG * 1000).toFixed(0) + " per 1,000 sends";
     var n = notesFor(text, a);
     $("gen-notes").innerHTML = n.map(function (x) { return '<li class="' + x.cls + '">' + escapeHtml(x.t) + "</li>"; }).join("");
@@ -705,7 +717,7 @@ footer p { margin: 0 0 6px; }
   $("gen-out").addEventListener("input", function () { genState.edited = true; renderGenOutput(false); });
   $("gen-reset").addEventListener("click", function () { renderGenOutput(true); });
   $("gen-copy").addEventListener("click", function () {
-    var t = $("gen-out").value; if (!t) return;
+    var t = $("gen-out").value; if (!t || !genState.values.agent.trim()) return;
     copyText(isSafe(t) ? t : fix(t), $("gen-toast"), isSafe(t) ? "Copied" : "Copied the fixed version");
   });
   $("gen-check").addEventListener("click", function () { msg.value = $("gen-out").value; renderOne(); setMode("one"); window.scrollTo(0, 0); });
