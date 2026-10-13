@@ -203,6 +203,12 @@ details > summary { cursor: pointer; font-weight: 600; color: var(--muted); }
 .pane-body { flex: 1; margin: 0; min-height: 260px; border: 0; border-radius: 0; background: var(--surface); padding: 14px 16px; font-family: var(--font-mono); font-size: 0.9rem; line-height: 1.6; color: var(--fg); white-space: pre-wrap; overflow-wrap: anywhere; resize: vertical; }
 textarea.pane-body:focus { outline: 2px solid var(--accent); outline-offset: -2px; }
 .pane-out { border-color: var(--accent); }
+.pane .tpl-pane { grid-template-columns: minmax(0, 1fr); gap: 6px; padding: 10px; overflow-y: auto; max-height: 420px; flex: 1; }
+.pane-foot { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 8px; padding: 10px 14px; border-top: 1px solid var(--line); background: var(--bg); }
+.pane-hint { font-size: 0.8rem; color: var(--muted); }
+.strip .cell-value { overflow-wrap: anywhere; }
+#gen-stats .cell:nth-child(2) .cell-value { font-size: 1.05rem; line-height: 1.3; padding-top: 4px; }
+#gen-out.pane-body { font-family: var(--font-body); font-size: 0.95rem; min-height: 360px; }
 .changes { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; }
 .changes-label { font-size: 0.7rem; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; color: var(--muted); margin-right: 4px; }
 .chip { font-family: var(--font-mono); font-size: 0.82rem; padding: 3px 10px; border-radius: 99px; background: var(--accent-soft); border: 1px solid var(--line); }
@@ -214,7 +220,9 @@ textarea.pane-body:focus { outline: 2px solid var(--accent); outline-offset: -2p
   .strip .cell:nth-child(3) { border-left: 0; }
   .strip .cell:nth-child(n+3) { border-top: 1px solid var(--line); }
   .pane-body { min-height: 180px; }
+  #gen-out.pane-body { min-height: 260px; }
   .cell-value { font-size: 1.25rem; }
+  .pane .tpl-pane { max-height: none; overflow: visible; grid-template-columns: repeat(2, minmax(0, 1fr)); }
 }
 .tabs .short { display: none; }
 /* Phones: full-width one-line tabs, two columns of message cards with names only. */
@@ -263,25 +271,32 @@ footer p { margin: 0 0 6px; }
 
   <!-- ============ WRITE A MESSAGE (generator) ============ -->
   <div id="mode-gen" role="tabpanel" aria-labelledby="tab-gen" hidden style="flex-direction:column;gap:18px">
-    <section class="panel step" aria-labelledby="g1">
-      <h2 id="g1"><span class="no">1</span>Pick a message</h2>
-      <div class="tpl-grid" id="tpl-list" role="group" aria-label="Message templates"></div>
-    </section>
+    <!-- Same pattern as "Check a message": summary strip, then list on the left and the message on the right. -->
+    <div class="strip" id="gen-stats" aria-live="polite"></div>
 
-    <section class="panel step" aria-labelledby="g3">
-      <div class="row">
-        <h2 id="g3"><span class="no">2</span>Copy your message</h2>
-        <div class="btns">
-          <span class="toast" id="gen-toast"></span>
-          <button id="gen-copy" class="primary big" type="button">Copy</button>
+    <div class="split">
+      <section class="pane" aria-labelledby="g1">
+        <div class="pane-head"><h2 id="g1" class="pane-title">Pick a message</h2></div>
+        <div class="tpl-grid tpl-pane" id="tpl-list" role="group" aria-label="Message templates"></div>
+      </section>
+
+      <section class="pane pane-out" aria-labelledby="g3">
+        <div class="pane-head">
+          <h2 id="g3" class="pane-title">Your message <span class="pane-tag" id="gen-tag"></span></h2>
+          <div class="btns">
+            <span class="toast" id="gen-toast"></span>
+            <button id="gen-copy" class="primary" type="button">Copy</button>
+          </div>
         </div>
-      </div>
-      <div class="verdict" id="gen-verdict"></div>
-      <textarea id="gen-out" spellcheck="true" aria-label="Your message, ready to send" style="min-height:220px;font-family:var(--font-body);font-size:0.95rem"></textarea>
-      <p class="gen-meta" id="gen-meta"></p>
-      <ul class="notes" id="gen-notes"></ul>
-      <div class="btns"><button id="gen-reset" type="button">Undo my edits</button><button id="gen-check" type="button">Open in the checker</button></div>
-    </section>
+        <textarea id="gen-out" class="pane-body" spellcheck="true" aria-label="Your message, ready to send"></textarea>
+        <div class="pane-foot">
+          <span class="pane-hint">You can change any word before copying.</span>
+          <div class="btns"><button id="gen-reset" class="small" type="button">Undo my edits</button><button id="gen-check" class="small" type="button">Open in the checker</button></div>
+        </div>
+      </section>
+    </div>
+
+    <ul class="notes" id="gen-notes"></ul>
   </div>
 
   <!-- ============ ONE MESSAGE ============ -->
@@ -751,10 +766,17 @@ footer p { margin: 0 0 6px; }
   function renderGenOutput(regen) {
     var out = $("gen-out");
     if (regen) { out.value = generate(); genState.edited = false; }
-    var text = out.value, a = analyze(text), v = $("gen-verdict");
-    v.className = "verdict " + (a.gsm ? "ok" : "no");
-    v.innerHTML = verdictHtml(a, "Copy will send the fixed version.");
-    $("gen-meta").textContent = a.units + " characters · " + a.segments + (a.segments === 1 ? " segment" : " segments") + " · $" + (a.segments * COST_PER_SEG * 1000).toFixed(0) + " per 1,000 sends";
+    var text = out.value, a = analyze(text);
+    var found = a.gsm ? "" : a.b.replace(/^NO - fix in C: /, "");
+    function cell(label, value, note, cls) {
+      return '<div class="cell' + (cls ? " " + cls : "") + '"><span class="cell-label">' + label + '</span><span class="cell-value">' + value + "</span>" + (note ? '<span class="cell-note">' + escapeHtml(note) + "</span>" : "") + "</div>";
+    }
+    $("gen-stats").innerHTML =
+      cell("Status", a.gsm ? "✓ Safe" : "! Not safe", a.gsm ? "Ready to send" : "Has: " + found + ". Copy sends the fixed version.", a.gsm ? "good" : "bad") +
+      cell("Message", escapeHtml(currentTpl().name), currentTpl().use) +
+      cell("Segments", String(a.segments), a.units + " characters") +
+      cell("Cost per 1,000 sends", "$" + (a.segments * COST_PER_SEG * 1000).toFixed(2), "$" + COST_PER_SEG + " per segment");
+    $("gen-tag").textContent = genState.edited ? "edited" : "ready to send";
     var n = notesFor(text, a);
     $("gen-notes").innerHTML = n.map(function (x) { return '<li class="' + x.cls + '">' + escapeHtml(x.t) + "</li>"; }).join("");
     $("gen-notes").hidden = n.length === 0;
@@ -765,7 +787,9 @@ footer p { margin: 0 0 6px; }
     var b = e.target.closest("[data-tpl]"); if (!b) return;
     genState.tpl = b.dataset.tpl;
     try { localStorage.setItem("sms-gen-tpl", genState.tpl); } catch (err) {}
-    renderTplList(); renderGenOutput(true);
+    // Only move the highlight, so the list keeps its scroll position.
+    document.querySelectorAll("#tpl-list [data-tpl]").forEach(function (x) { x.setAttribute("aria-pressed", x === b); });
+    renderGenOutput(true);
     // On phones the message is below a long list, so jump to it after a pick.
     if (window.matchMedia("(max-width: 560px)").matches) $("g3").scrollIntoView({ block: "start" });
   });
