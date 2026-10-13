@@ -691,8 +691,9 @@ footer p { margin: 0 0 6px; }
     });
     try { localStorage.setItem("sms-checker-mode", mode); } catch (e) {}
   }
-  // "Whole sheet" is for whoever maintains the macro sheet, so it only shows inside Claude, not on the website.
-  if (!IN_CLAUDE) $("tab-all").hidden = true;
+  // "Whole sheet" is turned off everywhere for now; the code stays so it can come back later.
+  var SHOW_WHOLE_SHEET = false;
+  if (!SHOW_WHOLE_SHEET) $("tab-all").hidden = true;
   $("tab-gen").addEventListener("click", function () { setMode("gen"); });
   $("tab-one").addEventListener("click", function () { setMode("one"); });
   $("tab-all").addEventListener("click", function () { setMode("all"); });
@@ -1033,7 +1034,7 @@ footer p { margin: 0 0 6px; }
   try { draft = localStorage.getItem("sms-checker-draft"); mode = localStorage.getItem("sms-checker-mode"); } catch (e) {}
   msg.value = draft || SAMPLE;
   renderOne();
-  setMode(mode === "one" || (mode === "all" && IN_CLAUDE) ? mode : "gen");
+  setMode(mode === "one" || (mode === "all" && SHOW_WHOLE_SHEET) ? mode : "gen");
 })();
 </script>
 
