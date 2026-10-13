@@ -8,7 +8,7 @@
 <body>
 <title>SMS Macro Checker</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Figtree:wght@400;500;600;700;800&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Figtree:wght@400;500;600;700;800&family=IBM+Plex+Mono:wght@400;500;600&display=swap">
 <style>
 /* Homeaglow brand: light surface, dark #1B1A1A text, primary yellow #FED346 as accent fill only, Figtree type.
    Homeaglow light is the default; viewers can switch to other themes from the header.
@@ -236,11 +236,80 @@ textarea.pane-body:focus { outline: 2px solid var(--accent); outline-offset: -2p
   .tpl[aria-pressed="true"] { padding: 8px 9px; }
   .tpl small { display: none; }
 }
-.req { font-weight: 500; color: var(--bad); font-size: 0.78rem; }
-.gen-fields input[aria-invalid="true"] { border-color: var(--bad); background: var(--bad-soft); }
-.gen-meta { margin: 0; color: var(--muted); font-size: 0.82rem; font-family: var(--font-mono); font-variant-numeric: tabular-nums; }
 footer { color: var(--muted); font-size: 0.8rem; max-width: 80ch; }
 footer p { margin: 0 0 6px; }
+
+/* ===== Refined look: "elegant yet digital" =====
+   Quiet surfaces with hairline borders and soft depth; a faint dot grid and monospaced
+   readouts (labels, numbers, status lights, segment meters) give the digital edge. */
+:root { --shadow: 0 1px 2px rgba(27, 26, 26, 0.04), 0 12px 32px -18px rgba(27, 26, 26, 0.22); --grid: rgba(27, 26, 26, 0.06); --radius: 16px; }
+:root[data-skin="dark"], :root[data-skin="midnight"] { --shadow: 0 1px 0 rgba(255, 255, 255, 0.04) inset, 0 16px 40px -20px rgba(0, 0, 0, 0.7); --grid: rgba(255, 255, 255, 0.05); }
+
+body { background-color: var(--bg); background-image: radial-gradient(var(--grid) 1px, transparent 1.2px); background-size: 22px 22px; background-attachment: fixed; }
+.wrap { gap: 22px; }
+header { border-bottom: 1px solid var(--line); padding-bottom: 20px; gap: 10px; }
+h1 { font-size: 2.15rem; letter-spacing: -0.025em; }
+.sub { font-size: 0.95rem; }
+.brand-tag { font-family: var(--font-mono); font-weight: 600; font-size: 0.66rem; letter-spacing: 0.14em; }
+.skin { font-family: var(--font-mono); font-size: 0.72rem; text-transform: uppercase; letter-spacing: 0.1em; }
+
+/* Tabs: a crisp segmented control */
+.tabs { background: var(--surface); box-shadow: var(--shadow); padding: 5px; gap: 4px; }
+.tabs button { font-family: var(--font-mono); font-size: 0.76rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.1em; padding: 9px 20px; transition: background 0.15s, color 0.15s; }
+.tabs button:hover { border-color: transparent; background: var(--bg); }
+.tabs button[aria-selected="true"] { background: var(--fg); color: var(--surface); }
+
+/* Readout strip */
+.strip { border-radius: var(--radius); box-shadow: var(--shadow); }
+.strip .cell { padding: 16px 20px; gap: 4px; }
+.cell-label { font-family: var(--font-mono); font-size: 0.64rem; font-weight: 600; letter-spacing: 0.14em; }
+.cell-value { font-family: var(--font-mono); font-weight: 500; font-size: 1.65rem; letter-spacing: -0.03em; display: flex; align-items: center; flex-wrap: wrap; }
+.strip .cell:first-child .cell-value, #gen-stats .cell:nth-child(2) .cell-value { font-family: var(--font-body); font-weight: 700; letter-spacing: -0.01em; }
+.cell-note { font-size: 0.76rem; }
+.led { flex: none; display: inline-block; width: 9px; height: 9px; border-radius: 50%; margin-right: 10px; background: currentColor; box-shadow: 0 0 0 3px color-mix(in srgb, currentColor 18%, transparent), 0 0 12px color-mix(in srgb, currentColor 55%, transparent); }
+.cell.idle .cell-value { color: var(--muted); }
+.meter { display: flex; gap: 3px; flex-basis: 100%; margin-top: 8px; }
+.meter i { width: 14px; height: 5px; border-radius: 2px; background: var(--fg); opacity: 0.8; }
+.meter.bad i { background: var(--bad); opacity: 1; }
+.meter.good i { background: var(--good); opacity: 1; }
+.meter b { font-family: var(--font-mono); font-size: 0.66rem; font-weight: 500; color: var(--muted); margin-left: 4px; line-height: 5px; }
+
+/* Panes */
+.pane { border-radius: var(--radius); box-shadow: var(--shadow); }
+.pane-head { background: transparent; padding: 12px 16px; min-height: 56px; }
+.pane-title { font-family: var(--font-mono); font-size: 0.66rem; letter-spacing: 0.14em; display: flex; align-items: center; gap: 8px; }
+.pane-title::before { content: ""; width: 6px; height: 6px; border-radius: 50%; background: var(--line); box-shadow: 0 0 0 3px var(--bg); }
+.pane-out { border-color: var(--line); box-shadow: var(--shadow), inset 0 3px 0 var(--accent); }
+.pane-out .pane-title::before { background: var(--accent); }
+.pane-tag { font-family: var(--font-mono); font-size: 0.62rem; letter-spacing: 0.08em; text-transform: uppercase; color: var(--good); background: var(--good-soft); padding: 3px 8px; border-radius: 99px; }
+.pane-body { padding: 18px 20px; line-height: 1.7; }
+.pane-foot { background: transparent; padding: 10px 16px; }
+
+/* Message list: quiet rows instead of boxed cards */
+.pane .tpl-pane { gap: 2px; padding: 8px; }
+.tpl { border: 1px solid transparent; background: transparent; border-radius: 10px; padding: 10px 12px; transition: background 0.15s; position: relative; }
+.tpl:hover { border-color: transparent; background: var(--bg); }
+.tpl[aria-pressed="true"] { border: 1px solid var(--accent); background: var(--accent-soft); padding: 10px 12px; }
+.tpl[aria-pressed="true"]::after { content: "\25CF"; position: absolute; right: 12px; top: 10px; font-size: 0.55rem; color: var(--fg); }
+
+/* Buttons, chips, notes, details */
+button.primary { font-family: var(--font-mono); font-size: 0.78rem; letter-spacing: 0.08em; text-transform: uppercase; padding: 9px 18px; box-shadow: 0 6px 16px -8px color-mix(in srgb, var(--accent) 80%, transparent); }
+button.small { font-size: 0.76rem; }
+.chip { font-family: var(--font-mono); background: var(--surface); box-shadow: var(--shadow); }
+.changes-label { font-family: var(--font-mono); font-size: 0.64rem; letter-spacing: 0.14em; }
+.notes li { border-radius: 12px; padding: 10px 14px; }
+details.panel { border-radius: var(--radius); box-shadow: var(--shadow); }
+details > summary { font-family: var(--font-mono); font-size: 0.72rem; text-transform: uppercase; letter-spacing: 0.12em; }
+footer { border-top: 1px solid var(--line); padding-top: 16px; }
+
+@media (max-width: 760px) {
+  .cell-value { font-size: 1.3rem; }
+  .strip .cell { padding: 14px 14px; }
+}
+@media (max-width: 560px) {
+  .tabs button { padding: 8px 6px; }
+  .tpl { border: 1px solid var(--line); }
+}
 @media (prefers-reduced-motion: reduce) { * { transition: none !important; } }
 </style>
 
@@ -576,6 +645,13 @@ footer p { margin: 0 0 6px; }
   // On the standalone website there is no column C, so the result says it in plain words.
   var IN_CLAUDE = !!(window.claude && window.claude.use);
 
+  // Readout bits for the summary strips: a status light and a one-bar-per-segment meter.
+  function led(word) { return '<span class="led"></span>' + word; }
+  function meter(n, cls) {
+    var bars = ""; for (var i = 0; i < Math.min(n, 10); i++) bars += "<i></i>";
+    return '<span class="meter' + (cls ? " " + cls : "") + '" aria-hidden="true">' + bars + (n > 10 ? "<b>+" + (n - 10) + "</b>" : "") + "</span>";
+  }
+
   // Plain-language result box shared by "Write a message" and "Check a message".
   function verdictHtml(a, nextStep) {
     if (a.gsm) return '<span class="vicon" aria-hidden="true">✓</span><span>Safe to send</span>';
@@ -623,10 +699,10 @@ footer p { margin: 0 0 6px; }
       return '<div class="cell' + (cls ? " " + cls : "") + '"><span class="cell-label">' + label + '</span><span class="cell-value">' + value + "</span>" + (note ? '<span class="cell-note">' + escapeHtml(note) + "</span>" : "") + "</div>";
     }
     $("stats").innerHTML = !text
-      ? cell("Status", "Waiting", "Paste a message below") + cell("Segments now", "0") + cell("Segments after fix", "0") + cell("Wasted per 1,000 sends", "$0.00")
-      : cell("Status", a.gsm ? "✓ Safe" : "! Not safe", a.gsm ? "Send it as it is" : "Has: " + found, a.gsm ? "good" : "bad") +
-        cell("Segments now", String(a.segments), a.units + " characters") +
-        cell("Segments after fix", String(f.segments), saved ? saved + " fewer" : "No change", saved ? "good" : "") +
+      ? cell("Status", led("Waiting"), "Paste a message below", "idle") + cell("Segments now", "0") + cell("Segments after fix", "0") + cell("Wasted per 1,000 sends", "$0.00")
+      : cell("Status", led(a.gsm ? "Safe" : "Not safe"), a.gsm ? "Send it as it is" : "Has: " + found, a.gsm ? "good" : "bad") +
+        cell("Segments now", a.segments + meter(a.segments, a.gsm ? "" : "bad"), a.units + " characters") +
+        cell("Segments after fix", f.segments + meter(f.segments, saved ? "good" : ""), saved ? saved + " fewer" : "No change", saved ? "good" : "") +
         cell("Wasted per 1,000 sends", "$" + wasted.toFixed(2), saved ? "if sent without the fix" : "Nothing wasted", saved ? "bad" : "");
 
     $("out-tag").textContent = !text ? "" : (a.gsm ? "unchanged" : "fixed, ready to send");
@@ -772,9 +848,9 @@ footer p { margin: 0 0 6px; }
       return '<div class="cell' + (cls ? " " + cls : "") + '"><span class="cell-label">' + label + '</span><span class="cell-value">' + value + "</span>" + (note ? '<span class="cell-note">' + escapeHtml(note) + "</span>" : "") + "</div>";
     }
     $("gen-stats").innerHTML =
-      cell("Status", a.gsm ? "✓ Safe" : "! Not safe", a.gsm ? "Ready to send" : "Has: " + found + ". Copy sends the fixed version.", a.gsm ? "good" : "bad") +
+      cell("Status", led(a.gsm ? "Safe" : "Not safe"), a.gsm ? "Ready to send" : "Has: " + found + ". Copy sends the fixed version.", a.gsm ? "good" : "bad") +
       cell("Message", escapeHtml(currentTpl().name), currentTpl().use) +
-      cell("Segments", String(a.segments), a.units + " characters") +
+      cell("Segments", a.segments + meter(a.segments), a.units + " characters") +
       cell("Cost per 1,000 sends", "$" + (a.segments * COST_PER_SEG * 1000).toFixed(2), "$" + COST_PER_SEG + " per segment");
     $("gen-tag").textContent = genState.edited ? "edited" : "ready to send";
     var n = notesFor(text, a);
