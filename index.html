@@ -728,7 +728,7 @@ footer p { margin: 0 0 6px; }
     try { localStorage.setItem("sms-gen-tpl", genState.tpl); } catch (err) {}
     renderTplList(); renderGenFields(); renderGenOutput(true);
     // On phones the details are below a long list, so jump to them after a pick.
-    if (window.matchMedia("(max-width: 560px)").matches) $("g2").scrollIntoView({ behavior: "smooth", block: "start" });
+    if (window.matchMedia("(max-width: 560px)").matches) $("g2").scrollIntoView({ block: "start" });
   });
   $("gen-fields").addEventListener("input", function (e) {
     var k = e.target.dataset.field; if (!k) return;
