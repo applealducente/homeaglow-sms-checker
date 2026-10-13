@@ -337,6 +337,10 @@ footer p { margin: 0 0 6px; }
             <button id="btn-copy" class="primary" type="button">Copy</button>
           </div>
         </div>
+        <div class="names-bar">
+          <div class="field"><label for="cn-agent">Your name</label><input type="text" id="cn-agent" placeholder="e.g. Jordan" autocomplete="off"></div>
+          <div class="field"><label for="cn-customer">Customer name</label><input type="text" id="cn-customer" placeholder="e.g. Maria" autocomplete="off"></div>
+        </div>
         <pre class="pane-body" id="fixed"></pre>
       </section>
     </div>
@@ -603,6 +607,25 @@ footer p { margin: 0 0 6px; }
 
   var $ = function (id) { return document.getElementById(id); };
 
+  /* ---------------- Names (shared by both tabs) ----------------
+     In "Check a message" the names fill the blanks of a pasted macro: {{first_name}}, {name}, (NAME),
+     "Hi ," / "Hi !" with the name missing, and "This is from Homeaglow" with the agent missing. */
+  var NAMES = { agent: "", customer: "" };
+  try { NAMES.agent = localStorage.getItem("sms-gen-agent") || ""; } catch (e) {}
+  function fillNames(text) {
+    var agent = NAMES.agent.trim(), customer = NAMES.customer.trim(), t = text;
+    if (agent) {
+      t = t.replace(/\(\s*NAME\s*\)|\[\s*your name\s*\]|\{\{?\s*(?:agent|agent_name|your_name)\s*\}?\}/gi, agent);
+      t = t.replace(/\bThis is \{\{?\s*name\s*\}?\}/gi, "This is " + agent);
+      t = t.replace(/\bThis is (from|with) /gi, "This is " + agent + " $1 ");
+    }
+    if (customer) {
+      t = t.replace(/\{\{?\s*(?:first_name|firstname|customer|customer_name|name)\s*\}?\}/gi, customer);
+      t = t.replace(/\b(Hi|Hello|Hey)\s+([,!.])/g, "$1 " + customer + "$2");
+    }
+    return t;
+  }
+
   function copyText(text, toastEl, okMsg) {
     function done(ok) { toastEl.textContent = ok ? (okMsg || "Copied") : "Copy blocked. Select the text and press Ctrl+C."; setTimeout(function () { toastEl.textContent = ""; }, 2500); }
     // Backup for browsers that refuse the Clipboard API: copy from a hidden text box.
@@ -625,7 +648,7 @@ footer p { margin: 0 0 6px; }
   }
 
   function renderOne() {
-    var text = msg.value, a = analyze(text), fixedText = fix(text), f = analyze(fixedText);
+    var text = msg.value, a = analyze(text), fixedText = fix(fillNames(text)), f = analyze(fixedText);
     var saved = Math.max(0, a.segments - f.segments);
     $("marked").innerHTML = markup(text);
 
@@ -642,7 +665,8 @@ footer p { margin: 0 0 6px; }
         cell("Segments after fix", String(f.segments), saved ? saved + " fewer" : "No change", saved ? "good" : "") +
         cell("Wasted per 1,000 sends", "$" + wasted.toFixed(2), saved ? "if sent without the fix" : "Nothing wasted", saved ? "bad" : "");
 
-    $("out-tag").textContent = !text ? "" : (a.gsm ? "unchanged" : "fixed, ready to send");
+    var namesFilled = fillNames(text) !== text;
+    $("out-tag").textContent = !text ? "" : (!a.gsm ? "fixed, ready to send" : (namesFilled ? "names filled in" : "unchanged"));
 
     // What the fix changed, as chips: "’ → '  x3", "✨ removed".
     var ch = $("changes");
@@ -682,7 +706,7 @@ footer p { margin: 0 0 6px; }
         '<p class="label" style="margin:10px 0 4px">As the sheet writes it (column D)</p><pre class="preview">' + escapeHtml(a.d) + "</pre>";
     }
 
-    var n = notesFor(text, a);
+    var n = notesFor(fillNames(text), a);
     $("notes").innerHTML = n.map(function (x) { return '<li class="' + x.cls + '">' + escapeHtml(x.t) + "</li>"; }).join("");
     $("notes").hidden = n.length === 0;
     $("legend").textContent = a.bad.size ? "red = not GSM-7, yellow = counts as 2" : "";
@@ -692,8 +716,8 @@ footer p { margin: 0 0 6px; }
   msg.addEventListener("input", renderOne);
   $("btn-sample").addEventListener("click", function () { msg.value = SAMPLE; renderOne(); msg.focus(); });
   $("btn-clear").addEventListener("click", function () { msg.value = ""; renderOne(); msg.focus(); });
-  $("btn-use").addEventListener("click", function () { msg.value = fix(msg.value); renderOne(); });
-  $("btn-copy").addEventListener("click", function () { var t = fix(msg.value); if (t) copyText(t, $("copy-toast")); });
+  $("btn-use").addEventListener("click", function () { msg.value = fix(fillNames(msg.value)); renderOne(); });
+  $("btn-copy").addEventListener("click", function () { var t = fix(fillNames(msg.value)); if (t) copyText(t, $("copy-toast")); });
 
   /* ---------------- Tabs ---------------- */
   function setMode(mode) {
@@ -816,14 +840,19 @@ footer p { margin: 0 0 6px; }
   $("gen-check").addEventListener("click", function () { msg.value = $("gen-out").value; renderOne(); setMode("one"); window.scrollTo(0, 0); });
 
   // Optional names: typing fills them straight into the message. The agent's own name is remembered.
-  try { genState.values.agent = localStorage.getItem("sms-gen-agent") || ""; } catch (e) {}
-  $("gn-agent").value = genState.values.agent;
-  $("gn-agent").addEventListener("input", function () {
-    genState.values.agent = this.value;
-    try { localStorage.setItem("sms-gen-agent", this.value); } catch (e) {}
-    renderGenOutput(true);
+  // The same two names are shown on both tabs and kept in sync.
+  genState.values.agent = NAMES.agent;
+  $("gn-agent").value = $("cn-agent").value = NAMES.agent;
+  function setName(kind, value) {
+    NAMES[kind] = value; genState.values[kind] = value;
+    $("gn-" + kind).value = value; $("cn-" + kind).value = value;
+    if (kind === "agent") { try { localStorage.setItem("sms-gen-agent", value); } catch (e) {} }
+    renderGenOutput(true); renderOne();
+  }
+  ["agent", "customer"].forEach(function (kind) {
+    $("gn-" + kind).addEventListener("input", function () { setName(kind, this.value); });
+    $("cn-" + kind).addEventListener("input", function () { setName(kind, this.value); });
   });
-  $("gn-customer").addEventListener("input", function () { genState.values.customer = this.value; renderGenOutput(true); });
 
   renderTplList(); renderGenOutput(true);
 
