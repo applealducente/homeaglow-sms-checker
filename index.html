@@ -92,7 +92,7 @@ h1 { text-align: center; font-weight: 800; font-size: 2rem; margin: 0; letter-sp
 .label { font-size: 0.72rem; text-transform: uppercase; letter-spacing: 0.08em; color: var(--muted); font-weight: 700; margin: 0; }
 .row { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 8px; }
 .step h2 { margin: 0; font-size: 1.05rem; font-weight: 700; display: flex; align-items: center; gap: 10px; }
-.step .no { display: inline-grid; place-items: center; width: 26px; height: 26px; border-radius: 50%; background: var(--accent); color: var(--accent-ink); font-weight: 700; font-size: 0.9rem; }
+.step h2 .no { display: inline-grid; place-items: center; width: 26px; height: 26px; border-radius: 50%; background: var(--accent); color: var(--accent-ink); font-weight: 700; font-size: 0.9rem; }
 
 textarea, input[type="text"] { width: 100%; font-family: var(--font-mono); font-size: 0.88rem; line-height: 1.55; color: var(--fg); background: var(--bg); border: 1px solid var(--line); border-radius: 8px; padding: 10px 12px; }
 textarea { min-height: 180px; resize: vertical; }
@@ -116,7 +116,10 @@ button.small { padding: 4px 10px; font-size: 0.78rem; }
 .verdict { display: flex; gap: 12px; align-items: center; flex-wrap: wrap; padding: 14px 16px; border-radius: 8px; font-weight: 600; font-size: 1.05rem; }
 .verdict.ok { background: var(--good-soft); color: var(--good); }
 .verdict.no { background: var(--bad-soft); color: var(--bad); }
-.verdict span.txt { font-weight: 500; }
+.verdict span.txt { display: block; font-weight: 500; font-size: 0.88rem; margin-top: 2px; }
+.verdict .vicon { flex: none; display: inline-grid; place-items: center; width: 28px; height: 28px; border-radius: 50%; border: 2px solid currentColor; font-weight: 800; font-size: 0.95rem; }
+.verdict { flex-wrap: nowrap; align-items: flex-start; }
+.verdict > span:last-child { min-width: 0; padding-top: 3px; }
 .pill { font-family: var(--font-mono); font-size: 0.74rem; font-weight: 500; padding: 2px 8px; border-radius: 99px; border: 1px solid currentColor; white-space: nowrap; }
 .pill.ok { color: var(--good); background: var(--good-soft); }
 .pill.no { color: var(--bad); background: var(--bad-soft); }
@@ -219,7 +222,7 @@ footer p { margin: 0 0 6px; }
       </label>
     </div>
     <h1>SMS Macro Checker</h1>
-    <p class="sub">Write a ready-to-send text from a macro, or check your own. Catches characters that turn a text into Unicode, which cuts each segment from 160 to 70 characters and multiplies the cost.</p>
+    <p class="sub">Pick a ready-made text or check your own. It removes hidden characters that can make a text cost 2 to 3 times more to send.</p>
   </header>
 
   <div class="tabs" role="tablist" aria-label="Mode">
@@ -235,14 +238,9 @@ footer p { margin: 0 0 6px; }
       <div class="tpl-grid" id="tpl-list" role="group" aria-label="Message templates"></div>
     </section>
 
-    <section class="panel step" aria-labelledby="g2">
-      <h2 id="g2"><span class="no">2</span>Fill in the details</h2>
-      <div class="gen-fields" id="gen-fields"></div>
-    </section>
-
     <section class="panel step" aria-labelledby="g3">
       <div class="row">
-        <h2 id="g3"><span class="no">3</span>Copy your message</h2>
+        <h2 id="g3"><span class="no">2</span>Copy your message</h2>
         <div class="btns">
           <span class="toast" id="gen-toast"></span>
           <button id="gen-copy" class="primary big" type="button">Copy</button>
@@ -367,8 +365,8 @@ footer p { margin: 0 0 6px; }
   </div>
 
   <footer>
-    <p>This page runs exact copies of the "SMS Macro checker" sheet's formulas: column B (Safe?), column C (Fixed version, including the sheet's TRIM, which squeezes repeated spaces; one addition: accented letters like í or á become i or a instead of being deleted) and the columns D to H checks. GSM-7 messages fit 160 characters in one segment (153 per segment when split). One character outside GSM-7, such as a curly apostrophe, em dash, bullet or emoji, switches the whole message to Unicode: 70 characters in one segment, 67 when split.</p>
-    <p>Cost uses $0.004 per segment, matching the sheet. The characters <code>{ } [ ] ~ ^ | \ €</code> are valid GSM-7 but count as 2 each.</p>
+    <p><b>Why this matters:</b> texts are paid for in pieces called segments. A normal text fits 160 characters in each piece. One special character, like a curly apostrophe (’), a long dash (—), a bullet (•) or an emoji, switches the whole text to a format that fits only 70 characters per piece. The same message can then cost 2 to 3 times more. This tool swaps those characters for plain ones.</p>
+    <p>Uses the same rules as the "SMS Macro checker" Google Sheet. Cost is $0.004 per segment.</p>
   </footer>
 </div>
 
@@ -518,7 +516,7 @@ footer p { margin: 0 0 6px; }
   function notesFor(text, a) {
     var notes = [];
     var uniq = Array.from(new Set(placeholders(text).map(function (p) { return p.s; })));
-    if (uniq.length) notes.push({ cls: "info", t: "Placeholders to fill or confirm they merge: " + uniq.join(", ") });
+    if (uniq.length) notes.push({ cls: "info", t: "Fill these in before sending: " + uniq.join(", ") });
     if (/\b(Hi|Hello|Hey)\s+[,!.]/i.test(text)) notes.push({ cls: "warn", t: "The customer's name looks missing after the greeting (\"Hi ,\" or \"Hi !\")." });
     if (/\bThis is\s+(from|with)\b/i.test(text)) notes.push({ cls: "warn", t: "The agent's name looks missing (\"This is from Homeaglow\")." });
     if (/^\s*".*"\s*$/s.test(text)) notes.push({ cls: "warn", t: "The whole message is wrapped in quotation marks, probably left over from copying out of the sheet." });
@@ -530,6 +528,13 @@ footer p { margin: 0 0 6px; }
   // Inside Claude the page sits next to the sheet, so it keeps the sheet's column B wording.
   // On the standalone website there is no column C, so the result says it in plain words.
   var IN_CLAUDE = !!(window.claude && window.claude.use);
+
+  // Plain-language result box shared by "Write a message" and "Check a message".
+  function verdictHtml(a, nextStep) {
+    if (a.gsm) return '<span class="vicon" aria-hidden="true">✓</span><span>Safe to send</span>';
+    var found = a.b.replace(/^NO - fix in C: /, "");
+    return '<span class="vicon" aria-hidden="true">!</span><span>Not safe to send<span class="txt">It has: ' + escapeHtml(found) + ". " + escapeHtml(nextStep) + "</span></span>";
+  }
   function label(a) {
     if (IN_CLAUDE) return a.b;
     if (a.gsm) return "SAFE: send as is";
@@ -566,8 +571,7 @@ footer p { margin: 0 0 6px; }
 
     var v = $("verdict");
     if (!text) { v.className = "verdict"; v.innerHTML = '<span class="txt">Paste a message to check it.</span>'; }
-    else if (a.gsm) { v.className = "verdict ok"; v.innerHTML = '<span class="pill">' + a.encoding + "</span><span>" + escapeHtml(label(a)) + "</span>"; }
-    else { v.className = "verdict no"; v.innerHTML = '<span class="pill">' + a.encoding + "</span><span>" + escapeHtml(label(a)) + "</span>"; }
+    else { v.className = "verdict " + (a.gsm ? "ok" : "no"); v.innerHTML = verdictHtml(a, "Copy the fixed version in step 3."); }
 
     var costNow = a.segments * COST_PER_SEG * 1000, costFix = f.segments * COST_PER_SEG * 1000;
     $("stats").innerHTML =
@@ -638,7 +642,7 @@ footer p { margin: 0 0 6px; }
   };
 
   function hi(v) { return "Hi " + (v.customer.trim() || "there") + "!"; }
-  function me(v) { return "This is " + (v.agent.trim() || "[your name]") + " from Homeaglow."; }
+  function me(v) { return v.agent.trim() ? "This is " + v.agent.trim() + " from Homeaglow." : "This is the Homeaglow team."; }
   function money(n) { return Number.isInteger(n) ? String(n) : n.toFixed(2); }
 
   var TEMPLATES = [
@@ -672,7 +676,6 @@ footer p { margin: 0 0 6px; }
 
   var genState = { tpl: TEMPLATES[0].id, values: {}, edited: false };
   Object.keys(FIELDS).forEach(function (k) { genState.values[k] = FIELDS[k].def; });
-  try { var savedAgent = localStorage.getItem("sms-gen-agent"); if (savedAgent) genState.values.agent = savedAgent; } catch (e) {}
   try { var savedTpl = localStorage.getItem("sms-gen-tpl"); if (savedTpl && TEMPLATES.some(function (t) { return t.id === savedTpl; })) genState.tpl = savedTpl; } catch (e) {}
 
   function currentTpl() { return TEMPLATES.filter(function (t) { return t.id === genState.tpl; })[0]; }
@@ -680,18 +683,6 @@ footer p { margin: 0 0 6px; }
   function renderTplList() {
     $("tpl-list").innerHTML = TEMPLATES.map(function (t) {
       return '<button type="button" class="tpl" data-tpl="' + t.id + '" aria-pressed="' + (t.id === genState.tpl) + '">' + escapeHtml(t.name) + "<small>" + escapeHtml(t.use) + "</small></button>";
-    }).join("");
-  }
-
-  function renderGenFields() {
-    // "Your name" is required, so it comes first on every message.
-    var keys = ["agent"].concat(currentTpl().fields.filter(function (k) { return k !== "agent"; }));
-    $("gen-fields").innerHTML = keys.map(function (k) {
-      var f = FIELDS[k], id = "gf-" + k, val = escapeHtml(genState.values[k] || ""), req = k === "agent";
-      var input = f.type === "textarea"
-        ? '<textarea id="' + id + '" data-field="' + k + '">' + val + "</textarea>"
-        : '<input type="text" id="' + id + '" data-field="' + k + '" value="' + val + '"' + (f.ph ? ' placeholder="' + escapeHtml(f.ph) + '"' : "") + (req ? ' required aria-required="true"' : "") + ">";
-      return '<div class="field' + (f.type === "textarea" || f.wide ? " wide" : "") + '"><label for="' + id + '">' + escapeHtml(f.label) + (req ? ' <span class="req">(required)</span>' : "") + "</label>" + input + "</div>";
     }).join("");
   }
 
@@ -705,16 +696,8 @@ footer p { margin: 0 0 6px; }
     var out = $("gen-out");
     if (regen) { out.value = generate(); genState.edited = false; }
     var text = out.value, a = analyze(text), v = $("gen-verdict");
-    var needName = !genState.values.agent.trim();
-    if (needName) {
-      v.className = "verdict no";
-      v.innerHTML = '<span class="pill">NAME</span><span>Enter your name in step 2 to finish this message</span>';
-    } else {
-      v.className = "verdict " + (a.gsm ? "ok" : "no");
-      v.innerHTML = '<span class="pill">' + a.encoding + "</span><span>" + escapeHtml(label(a)) + "</span>";
-    }
-    $("gen-copy").disabled = needName;
-    var nameBox = $("gf-agent"); if (nameBox) nameBox.setAttribute("aria-invalid", needName);
+    v.className = "verdict " + (a.gsm ? "ok" : "no");
+    v.innerHTML = verdictHtml(a, "Copy will send the fixed version.");
     $("gen-meta").textContent = a.units + " characters · " + a.segments + (a.segments === 1 ? " segment" : " segments") + " · $" + (a.segments * COST_PER_SEG * 1000).toFixed(0) + " per 1,000 sends";
     var n = notesFor(text, a);
     $("gen-notes").innerHTML = n.map(function (x) { return '<li class="' + x.cls + '">' + escapeHtml(x.t) + "</li>"; }).join("");
@@ -726,25 +709,19 @@ footer p { margin: 0 0 6px; }
     var b = e.target.closest("[data-tpl]"); if (!b) return;
     genState.tpl = b.dataset.tpl;
     try { localStorage.setItem("sms-gen-tpl", genState.tpl); } catch (err) {}
-    renderTplList(); renderGenFields(); renderGenOutput(true);
-    // On phones the details are below a long list, so jump to them after a pick.
-    if (window.matchMedia("(max-width: 560px)").matches) $("g2").scrollIntoView({ block: "start" });
-  });
-  $("gen-fields").addEventListener("input", function (e) {
-    var k = e.target.dataset.field; if (!k) return;
-    genState.values[k] = e.target.value;
-    if (FIELDS[k].remember) { try { localStorage.setItem("sms-gen-agent", e.target.value); } catch (err) {} }
-    renderGenOutput(true);
+    renderTplList(); renderGenOutput(true);
+    // On phones the message is below a long list, so jump to it after a pick.
+    if (window.matchMedia("(max-width: 560px)").matches) $("g3").scrollIntoView({ block: "start" });
   });
   $("gen-out").addEventListener("input", function () { genState.edited = true; renderGenOutput(false); });
   $("gen-reset").addEventListener("click", function () { renderGenOutput(true); });
   $("gen-copy").addEventListener("click", function () {
-    var t = $("gen-out").value; if (!t || !genState.values.agent.trim()) return;
+    var t = $("gen-out").value; if (!t) return;
     copyText(isSafe(t) ? t : fix(t), $("gen-toast"), isSafe(t) ? "Copied" : "Copied the fixed version");
   });
   $("gen-check").addEventListener("click", function () { msg.value = $("gen-out").value; renderOne(); setMode("one"); window.scrollTo(0, 0); });
 
-  renderTplList(); renderGenFields(); renderGenOutput(true);
+  renderTplList(); renderGenOutput(true);
 
   /* ---------------- Whole sheet ---------------- */
   var results = [], filter = "all", lastSheet = null;
