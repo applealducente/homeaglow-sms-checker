@@ -183,6 +183,18 @@ details > summary { cursor: pointer; font-weight: 600; color: var(--muted); }
 .gen-fields { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 10px; }
 .gen-fields .field.wide { grid-column: 1 / -1; }
 .gen-fields textarea { min-height: 96px; font-family: var(--font-body); font-size: 0.92rem; }
+.tabs .short { display: none; }
+/* Phones: full-width one-line tabs, two columns of message cards with names only. */
+@media (max-width: 560px) {
+  .tabs { align-self: stretch; display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); }
+  .tabs button { padding: 8px 6px; white-space: nowrap; }
+  .tabs .long { display: none; }
+  .tabs .short { display: inline; }
+  .tpl-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 6px; }
+  .tpl { padding: 9px 10px; font-size: 0.84rem; line-height: 1.3; }
+  .tpl[aria-pressed="true"] { padding: 8px 9px; }
+  .tpl small { display: none; }
+}
 .req { font-weight: 500; color: var(--bad); font-size: 0.78rem; }
 .gen-fields input[aria-invalid="true"] { border-color: var(--bad); background: var(--bad-soft); }
 .gen-meta { margin: 0; color: var(--muted); font-size: 0.82rem; font-family: var(--font-mono); font-variant-numeric: tabular-nums; }
@@ -211,9 +223,9 @@ footer p { margin: 0 0 6px; }
   </header>
 
   <div class="tabs" role="tablist" aria-label="Mode">
-    <button id="tab-gen" role="tab" aria-selected="false" aria-controls="mode-gen" type="button">Write a message</button>
-    <button id="tab-one" role="tab" aria-selected="true" aria-controls="mode-one" type="button">Check a message</button>
-    <button id="tab-all" role="tab" aria-selected="false" aria-controls="mode-all" type="button">Whole sheet</button>
+    <button id="tab-gen" role="tab" aria-selected="false" aria-controls="mode-gen" type="button" aria-label="Write a message"><span class="long">Write a message</span><span class="short">Write</span></button>
+    <button id="tab-one" role="tab" aria-selected="true" aria-controls="mode-one" type="button" aria-label="Check a message"><span class="long">Check a message</span><span class="short">Check</span></button>
+    <button id="tab-all" role="tab" aria-selected="false" aria-controls="mode-all" type="button" aria-label="Whole sheet"><span class="long">Whole sheet</span><span class="short">Sheet</span></button>
   </div>
 
   <!-- ============ WRITE A MESSAGE (generator) ============ -->
@@ -715,6 +727,8 @@ footer p { margin: 0 0 6px; }
     genState.tpl = b.dataset.tpl;
     try { localStorage.setItem("sms-gen-tpl", genState.tpl); } catch (err) {}
     renderTplList(); renderGenFields(); renderGenOutput(true);
+    // On phones the details are below a long list, so jump to them after a pick.
+    if (window.matchMedia("(max-width: 560px)").matches) $("g2").scrollIntoView({ behavior: "smooth", block: "start" });
   });
   $("gen-fields").addEventListener("input", function (e) {
     var k = e.target.dataset.field; if (!k) return;
