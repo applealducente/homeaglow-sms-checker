@@ -476,6 +476,15 @@ footer p { margin: 0 0 6px; }
     return notes;
   }
 
+  // Inside Claude the page sits next to the sheet, so it keeps the sheet's column B wording.
+  // On the standalone website there is no column C, so the result says it in plain words.
+  var IN_CLAUDE = !!(window.claude && window.claude.use);
+  function label(a) {
+    if (IN_CLAUDE) return a.b;
+    if (a.gsm) return "SAFE: send as is";
+    return "NOT SAFE: use the fixed version (" + a.b.replace(/^NO - fix in C: /, "") + ")";
+  }
+
   var $ = function (id) { return document.getElementById(id); };
 
   function copyText(text, toastEl, okMsg) {
@@ -498,8 +507,8 @@ footer p { margin: 0 0 6px; }
 
     var v = $("verdict");
     if (!text) { v.className = "verdict"; v.innerHTML = '<span class="txt">Paste a message to check it.</span>'; }
-    else if (a.gsm) { v.className = "verdict ok"; v.innerHTML = '<span class="pill">' + a.encoding + "</span><span>" + escapeHtml(a.b) + "</span>"; }
-    else { v.className = "verdict no"; v.innerHTML = '<span class="pill">' + a.encoding + "</span><span>" + escapeHtml(a.b) + "</span>"; }
+    else if (a.gsm) { v.className = "verdict ok"; v.innerHTML = '<span class="pill">' + a.encoding + "</span><span>" + escapeHtml(label(a)) + "</span>"; }
+    else { v.className = "verdict no"; v.innerHTML = '<span class="pill">' + a.encoding + "</span><span>" + escapeHtml(label(a)) + "</span>"; }
 
     var costNow = a.segments * COST_PER_SEG * 1000, costFix = f.segments * COST_PER_SEG * 1000;
     $("stats").innerHTML =
@@ -599,7 +608,7 @@ footer p { margin: 0 0 6px; }
       var cls = !r.a.gsm ? "no" : (warns.length ? "warnonly" : "");
       var pill = r.a.gsm ? '<span class="pill ok">SAFE</span>' : '<span class="pill no">NOT SAFE</span>';
       var segTxt = r.a.gsm ? r.a.segments + " seg" : r.a.segments + " → " + r.f.segments + " seg";
-      var why = !r.a.gsm ? '<p class="why">' + escapeHtml(r.a.b) + "<br>" + escapeHtml(r.a.d) + "</p>" : "";
+      var why = !r.a.gsm ? '<p class="why">' + escapeHtml(label(r.a)) + "<br>" + escapeHtml(r.a.d) + "</p>" : "";
       var warnHtml = warns.length ? '<ul class="notes">' + warns.map(function (w) { return '<li class="warn">' + escapeHtml(w) + "</li>"; }).join("") + "</ul>" : "";
       return '<article class="item ' + cls + '">' +
         '<div class="item-head"><span class="rowno">' + escapeHtml(r.label) + "</span>" + pill +
@@ -633,7 +642,7 @@ footer p { margin: 0 0 6px; }
   $("btn-report").addEventListener("click", function () {
     var bad = results.filter(function (r) { return !r.a.gsm; });
     var text = bad.length ? bad.map(function (r) {
-      return r.label + " - " + r.a.b + " (" + r.a.segments + " -> " + r.f.segments + " segments)\n" + r.a.d + "\nSafe version:\n" + r.fixed;
+      return r.label + " - " + label(r.a) + " (" + r.a.segments + " -> " + r.f.segments + " segments)\n" + r.a.d + "\nSafe version:\n" + r.fixed;
     }).join("\n\n----------\n\n") : "All " + results.length + " messages are safe to send.";
     copyText(text, $("report-toast"), "Copied " + bad.length + " fixes");
   });
