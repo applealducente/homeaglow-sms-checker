@@ -76,7 +76,8 @@
 * { box-sizing: border-box; }
 body { background: var(--bg); color: var(--fg); font-family: var(--font-body); font-size: 15px; line-height: 1.5; padding-inline: 16px; padding-block: 28px 48px; }
 .wrap { max-width: 820px; margin: 0 auto; display: flex; flex-direction: column; gap: 18px; }
-header { display: flex; flex-direction: column; gap: 6px; border-bottom: 3px solid var(--accent); padding-bottom: 14px; }
+header { display: flex; flex-direction: column; align-items: center; gap: 8px; border-bottom: 3px solid var(--accent); padding-bottom: 16px; }
+footer .skin { margin-top: 10px; }
 .brandbar { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
 .logo { display: block; height: 44px; width: auto; max-width: 100%; }
 :root[data-skin="dark"] .logo, :root[data-skin="midnight"] .logo { filter: invert(1); }
@@ -246,21 +247,9 @@ footer p { margin: 0 0 6px; }
 
 <div class="wrap">
   <header>
-    <div class="topline">
-      <div class="brandbar"><img class="logo" src="homeaglow-logo.png" alt="Homeaglow" width="252" height="44"><span class="brand-tag">Sales team tool</span></div>
-      <label class="skin" for="skin">Theme
-        <select id="skin">
-          <option value="">Homeaglow</option>
-          <option value="dark">Homeaglow Dark</option>
-          <option value="ocean">Ocean</option>
-          <option value="mint">Mint</option>
-          <option value="blush">Blush</option>
-          <option value="midnight">Midnight</option>
-        </select>
-      </label>
-    </div>
+    <img class="logo" src="homeaglow-logo.png" alt="Homeaglow" width="252" height="44">
     <h1>SMS Macro Checker</h1>
-    <p class="sub">Pick a ready-made text or check your own. It removes hidden characters that can make a text cost 2 to 3 times more to send.</p>
+    <p class="sub">Pick a ready-made text or check your own before you send it.</p>
   </header>
 
   <div class="tabs" role="tablist" aria-label="Mode">
@@ -414,6 +403,16 @@ footer p { margin: 0 0 6px; }
   <footer>
     <p><b>Why this matters:</b> texts are paid for in pieces called segments. A normal text fits 160 characters in each piece. One special character, like a curly apostrophe (’), a long dash (—), a bullet (•) or an emoji, switches the whole text to a format that fits only 70 characters per piece. The same message can then cost 2 to 3 times more. This tool swaps those characters for plain ones.</p>
     <p>Uses the same rules as the "SMS Macro checker" Google Sheet. Cost is $0.004 per segment.</p>
+    <label class="skin" for="skin">Theme
+      <select id="skin">
+        <option value="">Homeaglow</option>
+        <option value="dark">Homeaglow Dark</option>
+        <option value="ocean">Ocean</option>
+        <option value="mint">Mint</option>
+        <option value="blush">Blush</option>
+        <option value="midnight">Midnight</option>
+      </select>
+    </label>
   </footer>
 </div>
 
