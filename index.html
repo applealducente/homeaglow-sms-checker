@@ -527,9 +527,17 @@ footer p { margin: 0 0 6px; }
   var $ = function (id) { return document.getElementById(id); };
 
   function copyText(text, toastEl, okMsg) {
-    function done(ok) { toastEl.textContent = ok ? (okMsg || "Copied") : "Copy blocked. Select the text and copy it."; setTimeout(function () { toastEl.textContent = ""; }, 2000); }
-    try { navigator.clipboard.writeText(text).then(function () { done(true); }, function () { done(false); }); }
-    catch (e) { done(false); }
+    function done(ok) { toastEl.textContent = ok ? (okMsg || "Copied") : "Copy blocked. Select the text and press Ctrl+C."; setTimeout(function () { toastEl.textContent = ""; }, 2500); }
+    // Backup for browsers that refuse the Clipboard API: copy from a hidden text box.
+    function legacy() {
+      var ta = document.createElement("textarea");
+      ta.value = text; ta.setAttribute("readonly", ""); ta.style.position = "fixed"; ta.style.opacity = "0";
+      document.body.appendChild(ta); ta.select();
+      var ok = false; try { ok = document.execCommand("copy"); } catch (e) {}
+      ta.remove(); return ok;
+    }
+    try { navigator.clipboard.writeText(text).then(function () { done(true); }, function () { done(legacy()); }); }
+    catch (e) { done(legacy()); }
   }
 
   /* ---------------- One message ---------------- */
