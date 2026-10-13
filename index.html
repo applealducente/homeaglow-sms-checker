@@ -189,7 +189,7 @@ details > summary { cursor: pointer; font-weight: 600; color: var(--muted); }
 .tabs .short { display: none; }
 /* Phones: full-width one-line tabs, two columns of message cards with names only. */
 @media (max-width: 560px) {
-  .tabs { align-self: stretch; display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); }
+  .tabs { align-self: stretch; display: grid; grid-auto-flow: column; grid-auto-columns: minmax(0, 1fr); }
   .tabs button { padding: 8px 6px; white-space: nowrap; }
   .tabs .long { display: none; }
   .tabs .short { display: inline; }
@@ -623,6 +623,8 @@ footer p { margin: 0 0 6px; }
     });
     try { localStorage.setItem("sms-checker-mode", mode); } catch (e) {}
   }
+  // "Whole sheet" is for whoever maintains the macro sheet, so it only shows inside Claude, not on the website.
+  if (!IN_CLAUDE) $("tab-all").hidden = true;
   $("tab-gen").addEventListener("click", function () { setMode("gen"); });
   $("tab-one").addEventListener("click", function () { setMode("one"); });
   $("tab-all").addEventListener("click", function () { setMode("all"); });
@@ -954,7 +956,7 @@ footer p { margin: 0 0 6px; }
   try { draft = localStorage.getItem("sms-checker-draft"); mode = localStorage.getItem("sms-checker-mode"); } catch (e) {}
   msg.value = draft || SAMPLE;
   renderOne();
-  setMode(mode === "one" || mode === "all" ? mode : "gen");
+  setMode(mode === "one" || (mode === "all" && IN_CLAUDE) ? mode : "gen");
 })();
 </script>
 
