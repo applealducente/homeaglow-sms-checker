@@ -176,6 +176,14 @@ details > summary { cursor: pointer; font-weight: 600; color: var(--muted); }
 .item .why { font-size: 0.82rem; color: var(--muted); margin: 0; }
 .item details summary { font-size: 0.82rem; }
 .item .preview { margin-top: 8px; max-height: 260px; }
+.tpl-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(210px, 1fr)); gap: 8px; }
+.tpl { text-align: left; border-radius: 8px; padding: 10px 12px; display: flex; flex-direction: column; gap: 2px; font-weight: 600; }
+.tpl small { font-weight: 400; color: var(--muted); font-size: 0.78rem; line-height: 1.35; }
+.tpl[aria-pressed="true"] { border: 2px solid var(--accent); background: var(--accent-soft); padding: 9px 11px; }
+.gen-fields { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 10px; }
+.gen-fields .field.wide { grid-column: 1 / -1; }
+.gen-fields textarea { min-height: 96px; font-family: var(--font-body); font-size: 0.92rem; }
+.gen-meta { margin: 0; color: var(--muted); font-size: 0.82rem; font-family: var(--font-mono); font-variant-numeric: tabular-nums; }
 footer { color: var(--muted); font-size: 0.8rem; max-width: 80ch; }
 footer p { margin: 0 0 6px; }
 @media (prefers-reduced-motion: reduce) { * { transition: none !important; } }
@@ -197,12 +205,41 @@ footer p { margin: 0 0 6px; }
       </label>
     </div>
     <h1>SMS Macro Checker</h1>
-    <p class="sub">Catch characters that turn a text into Unicode, which cuts each segment from 160 to 70 characters and multiplies the cost. Check one message, or every macro in the sheet at once.</p>
+    <p class="sub">Write a ready-to-send text from a macro, or check your own. Catches characters that turn a text into Unicode, which cuts each segment from 160 to 70 characters and multiplies the cost.</p>
   </header>
 
   <div class="tabs" role="tablist" aria-label="Mode">
-    <button id="tab-one" role="tab" aria-selected="true" aria-controls="mode-one" type="button">One message</button>
+    <button id="tab-gen" role="tab" aria-selected="false" aria-controls="mode-gen" type="button">Write a message</button>
+    <button id="tab-one" role="tab" aria-selected="true" aria-controls="mode-one" type="button">Check a message</button>
     <button id="tab-all" role="tab" aria-selected="false" aria-controls="mode-all" type="button">Whole sheet</button>
+  </div>
+
+  <!-- ============ WRITE A MESSAGE (generator) ============ -->
+  <div id="mode-gen" role="tabpanel" aria-labelledby="tab-gen" hidden style="flex-direction:column;gap:18px">
+    <section class="panel step" aria-labelledby="g1">
+      <h2 id="g1"><span class="no">1</span>Pick a message</h2>
+      <div class="tpl-grid" id="tpl-list" role="group" aria-label="Message templates"></div>
+    </section>
+
+    <section class="panel step" aria-labelledby="g2">
+      <h2 id="g2"><span class="no">2</span>Fill in the details</h2>
+      <div class="gen-fields" id="gen-fields"></div>
+    </section>
+
+    <section class="panel step" aria-labelledby="g3">
+      <div class="row">
+        <h2 id="g3"><span class="no">3</span>Copy your message</h2>
+        <div class="btns">
+          <span class="toast" id="gen-toast"></span>
+          <button id="gen-copy" class="primary big" type="button">Copy</button>
+        </div>
+      </div>
+      <div class="verdict" id="gen-verdict"></div>
+      <textarea id="gen-out" spellcheck="true" aria-label="Your message, ready to send" style="min-height:220px;font-family:var(--font-body);font-size:0.95rem"></textarea>
+      <p class="gen-meta" id="gen-meta"></p>
+      <ul class="notes" id="gen-notes"></ul>
+      <div class="btns"><button id="gen-reset" type="button">Undo my edits</button><button id="gen-check" type="button">Open in the checker</button></div>
+    </section>
   </div>
 
   <!-- ============ ONE MESSAGE ============ -->
@@ -552,14 +589,128 @@ footer p { margin: 0 0 6px; }
 
   /* ---------------- Tabs ---------------- */
   function setMode(mode) {
-    var one = mode === "one";
-    $("tab-one").setAttribute("aria-selected", one); $("tab-all").setAttribute("aria-selected", !one);
-    $("mode-one").hidden = !one; $("mode-all").hidden = one;
-    $("mode-all").style.display = one ? "" : "flex";
+    ["gen", "one", "all"].forEach(function (m) {
+      var on = m === mode;
+      $("tab-" + m).setAttribute("aria-selected", on);
+      $("mode-" + m).hidden = !on;
+      $("mode-" + m).style.display = on ? "flex" : "";
+    });
     try { localStorage.setItem("sms-checker-mode", mode); } catch (e) {}
   }
+  $("tab-gen").addEventListener("click", function () { setMode("gen"); });
   $("tab-one").addEventListener("click", function () { setMode("one"); });
   $("tab-all").addEventListener("click", function () { setMode("all"); });
+
+  /* ---------------- Write a message (generator) ----------------
+     Templates are cleaned-up versions of the macros in the "SMS Macro checker" sheet:
+     plain quotes and dashes only, with the names and numbers turned into fields. */
+  var FIELDS = {
+    customer:  { label: "Customer first name", ph: "e.g. Maria", def: "" },
+    agent:     { label: "Your name", ph: "e.g. Jordan", def: "", remember: true },
+    freeHours: { label: "Free hours", def: "3" },
+    hours:     { label: "Hours", def: "2" },
+    rate:      { label: "Hourly rate ($)", def: "63" },
+    offers:    { label: "Offers, one per line", def: "2 hours - $19\n3 hours - $19\n4 hours - $38\n6 hours - $78", type: "textarea" },
+    link:      { label: "Booking link", def: "https://try.homeaglow.com/agent?utm_content=fcf_latest_variant", wide: true },
+    callTime:  { label: "Call-back time", ph: "e.g. 4:15 PM", def: "" }
+  };
+
+  function hi(v) { return "Hi " + (v.customer.trim() || "there") + "!"; }
+  function me(v) { return v.agent.trim() ? "This is " + v.agent.trim() + " from Homeaglow." : "This is Homeaglow."; }
+  function money(n) { return Number.isInteger(n) ? String(n) : n.toFixed(2); }
+
+  var TEMPLATES = [
+    { id: "new-lead", name: "New lead: first text", use: "Someone just asked about cleaning.", fields: ["customer", "agent", "freeHours"],
+      text: function (v) { return hi(v) + " " + me(v) + " Thanks for your interest in our professional home cleaning services.\n\nGreat news! You qualify for our FREE " + v.freeHours + "-hour initial cleaning promotion.\n\nWe offer flexible one-time and recurring cleaning options, available 7 days a week. All cleaning supplies and equipment are provided, and every cleaner is thoroughly vetted and background-checked.\n\nTo help me put together the best package for your home, how many bedrooms and bathrooms would you like cleaned?"; } },
+    { id: "missed-call", name: "After a missed call", use: "You called and they didn't pick up.", fields: ["customer", "agent", "freeHours"],
+      text: function (v) { return hi(v) + " " + me(v) + " I just tried giving you a quick call. Are you still interested in home cleaning?\n\nWe're offering " + v.freeHours + " hours FREE on your first cleaning, plus our best rate on monthly cleanings. How many bedrooms and bathrooms do you have, so I can give you accurate pricing?"; } },
+    { id: "unfinished-quote", name: "Quote not finished", use: "They started a quote but didn't book.", fields: ["customer", "agent"],
+      text: function (v) { return hi(v) + " " + me(v) + " I noticed you started a quote request but didn't finish booking. I'd be happy to put together a custom cleaning package based on your home and cleaning needs.\n\nTo get started, how many bedrooms and bathrooms do you have?"; } },
+    { id: "voucher", name: "Free hours not claimed", use: "Reminder about their free cleaning voucher.", fields: ["customer", "freeHours"],
+      text: function (v) { return hi(v) + " I noticed you haven't claimed your " + v.freeHours + " FREE hours of cleaning yet. Would you still like me to help you set that up?\n\nIs now a good time for a quick call, or do you prefer text?"; } },
+    { id: "price-list", name: "Offer price list", use: "Show the current voucher prices.", fields: ["customer", "agent", "offers"],
+      text: function (v) { return hi(v) + " " + me(v) + " Thanks for your interest!\n\nWe have options for recurring or one-time cleaning, whichever works for you. Vetted cleaners bring their own supplies at no extra cost, Monday to Sunday.\n\nLIMITED TIME VOUCHERS\n" + v.offers.trim() + "\n\nReply BOOKNOW and I'll help you secure your voucher and schedule your first cleaning."; } },
+    { id: "held-back", name: "What held you back?", use: "Ask if it was the fee or the commitment.", fields: ["customer"],
+      text: function (v) { return hi(v) + " Still in need of home cleaning? When you looked at our offer before, what held you back from trying it?\n\nWas it the FEE, the COMMITMENT, or BOTH? Reply and I'll share an option that fits."; } },
+    { id: "booking-link", name: "Booking link steps", use: "Send the link and how to book.", fields: ["link", "hours"],
+      text: function (v) { return "To secure your spot before available times fill up, please follow these quick steps:\n\n1. Click this link: " + v.link.trim() + "\n2. Select the " + v.hours + " HOURS option\n3. Enter your details and complete your secure booking\n\nWe're excited to help you keep your home fresh and clean!"; } },
+    { id: "call-summary", name: "Call summary: one-time clean", use: "Recap the price after a call.", fields: ["customer", "rate", "hours"],
+      text: function (v) {
+        var r = parseFloat(v.rate), h = parseFloat(v.hours), total = (isFinite(r) && isFinite(h)) ? "$" + money(r * h) : "$__";
+        return "Thank you so much for your time" + (v.customer.trim() ? ", " + v.customer.trim() : "") + "! Here's a summary of what we discussed:\n\nOne-time cleaning (no contract, no commitment)\nDiscounted rate: $" + v.rate + "/hr, taxes and fees included\n$" + v.rate + " x " + v.hours + " hours = " + total + " ALL INCLUSIVE"; } },
+    { id: "call-back", name: "Call back later", use: "They asked you to call later.", fields: ["callTime"],
+      text: function (v) { return "Got it! I can call you back " + (v.callTime.trim() ? "after " + v.callTime.trim() : "later") + ". In the meantime, would you like to continue by text?"; } },
+    { id: "confirmed", name: "Appointment confirmed", use: "Their booking went through.", fields: ["customer"],
+      text: function (v) { return hi(v) + " The email confirmation for your appointment has been sent. If you have any questions, just let me know.\n\nThe email also has a link to your own dashboard, where you can see your cleaner's details, message them and book future appointments. Have a good one!"; } },
+    { id: "final", name: "Final follow-up", use: "Last message before closing the lead.", fields: ["customer", "agent", "freeHours"],
+      text: function (v) { return hi(v) + " " + me(v) + "\n\nThis will be my final follow-up about your cleaning inquiry. Since I haven't heard back, your promotional offer is scheduled to be removed and your file may be closed shortly.\n\nIf you'd still like to claim your FREE " + v.freeHours + "-hour initial cleaning and discounted pricing, please reply as soon as possible."; } },
+    { id: "weekend", name: "Weekend promo", use: "A friendly nudge before the weekend.", fields: ["agent"],
+      text: function (v) { return "WEEKEND IS COMING!\n\nGot errands to run or plans with family and friends? Don't let house cleaning get in the way.\n\nLet us take the cleaning off your hands so you can spend more time doing what you love." + (v.agent.trim() ? "\n\n- " + v.agent.trim() + ", Homeaglow" : "") + "\n\nReply GETCLEAN and we'll help you enjoy a cleaner, fresher home!"; } }
+  ];
+
+  var genState = { tpl: TEMPLATES[0].id, values: {}, edited: false };
+  Object.keys(FIELDS).forEach(function (k) { genState.values[k] = FIELDS[k].def; });
+  try { var savedAgent = localStorage.getItem("sms-gen-agent"); if (savedAgent) genState.values.agent = savedAgent; } catch (e) {}
+  try { var savedTpl = localStorage.getItem("sms-gen-tpl"); if (savedTpl && TEMPLATES.some(function (t) { return t.id === savedTpl; })) genState.tpl = savedTpl; } catch (e) {}
+
+  function currentTpl() { return TEMPLATES.filter(function (t) { return t.id === genState.tpl; })[0]; }
+
+  function renderTplList() {
+    $("tpl-list").innerHTML = TEMPLATES.map(function (t) {
+      return '<button type="button" class="tpl" data-tpl="' + t.id + '" aria-pressed="' + (t.id === genState.tpl) + '">' + escapeHtml(t.name) + "<small>" + escapeHtml(t.use) + "</small></button>";
+    }).join("");
+  }
+
+  function renderGenFields() {
+    $("gen-fields").innerHTML = currentTpl().fields.map(function (k) {
+      var f = FIELDS[k], id = "gf-" + k, val = escapeHtml(genState.values[k] || "");
+      var input = f.type === "textarea"
+        ? '<textarea id="' + id + '" data-field="' + k + '">' + val + "</textarea>"
+        : '<input type="text" id="' + id + '" data-field="' + k + '" value="' + val + '"' + (f.ph ? ' placeholder="' + escapeHtml(f.ph) + '"' : "") + ">";
+      return '<div class="field' + (f.type === "textarea" || f.wide ? " wide" : "") + '"><label for="' + id + '">' + escapeHtml(f.label) + "</label>" + input + "</div>";
+    }).join("");
+  }
+
+  function generate() {
+    var raw = currentTpl().text(genState.values);
+    // Run it through the checker: if a typed name or price brings in a character SMS can't send, use the fixed version.
+    return isSafe(raw) ? raw : fix(raw);
+  }
+
+  function renderGenOutput(regen) {
+    var out = $("gen-out");
+    if (regen) { out.value = generate(); genState.edited = false; }
+    var text = out.value, a = analyze(text), v = $("gen-verdict");
+    v.className = "verdict " + (a.gsm ? "ok" : "no");
+    v.innerHTML = '<span class="pill">' + a.encoding + "</span><span>" + escapeHtml(label(a)) + "</span>";
+    $("gen-meta").textContent = a.units + " characters · " + a.segments + (a.segments === 1 ? " segment" : " segments") + " · $" + (a.segments * COST_PER_SEG * 1000).toFixed(0) + " per 1,000 sends";
+    var n = notesFor(text, a);
+    $("gen-notes").innerHTML = n.map(function (x) { return '<li class="' + x.cls + '">' + escapeHtml(x.t) + "</li>"; }).join("");
+    $("gen-notes").hidden = n.length === 0;
+    $("gen-reset").hidden = !genState.edited;
+  }
+
+  $("tpl-list").addEventListener("click", function (e) {
+    var b = e.target.closest("[data-tpl]"); if (!b) return;
+    genState.tpl = b.dataset.tpl;
+    try { localStorage.setItem("sms-gen-tpl", genState.tpl); } catch (err) {}
+    renderTplList(); renderGenFields(); renderGenOutput(true);
+  });
+  $("gen-fields").addEventListener("input", function (e) {
+    var k = e.target.dataset.field; if (!k) return;
+    genState.values[k] = e.target.value;
+    if (FIELDS[k].remember) { try { localStorage.setItem("sms-gen-agent", e.target.value); } catch (err) {} }
+    renderGenOutput(true);
+  });
+  $("gen-out").addEventListener("input", function () { genState.edited = true; renderGenOutput(false); });
+  $("gen-reset").addEventListener("click", function () { renderGenOutput(true); });
+  $("gen-copy").addEventListener("click", function () {
+    var t = $("gen-out").value; if (!t) return;
+    copyText(isSafe(t) ? t : fix(t), $("gen-toast"), isSafe(t) ? "Copied" : "Copied the fixed version");
+  });
+  $("gen-check").addEventListener("click", function () { msg.value = $("gen-out").value; renderOne(); setMode("one"); window.scrollTo(0, 0); });
+
+  renderTplList(); renderGenFields(); renderGenOutput(true);
 
   /* ---------------- Whole sheet ---------------- */
   var results = [], filter = "all", lastSheet = null;
@@ -792,7 +943,7 @@ footer p { margin: 0 0 6px; }
   try { draft = localStorage.getItem("sms-checker-draft"); mode = localStorage.getItem("sms-checker-mode"); } catch (e) {}
   msg.value = draft || SAMPLE;
   renderOne();
-  if (mode === "all") setMode("all");
+  setMode(mode === "one" || mode === "all" ? mode : "gen");
 })();
 </script>
 
